@@ -2,12 +2,30 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import requests
 import os
+import threading
+from flask import Flask
 
-# 🔐 Use ENV (Render) OR fallback (local)
-TOKEN = os.getenv("TOKEN") or "8145649130:AAEDGyAcELtEd7So2fbkyC-wJyPIQev5gWE"
+# 🔐 ENV or fallback
+TOKEN = os.getenv("TOKEN") or "8145649130:AAE1MF8kgs7dieV6bV4rbXdfE6qLnvOVVi8"
 API_KEY = os.getenv("API_KEY") or "46111cc1"
 
 cache = {}
+
+# ================== 🌐 DUMMY WEB SERVER ==================
+web_app = Flask(name)
+
+@web_app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host="0.0.0.0", port=port)
+
+# Start web server in background
+threading.Thread(target=run_web).start()
+
+# ================== 🤖 BOT CODE ==================
 
 # START
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -15,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎬 Welcome to Movie Bot 🤖\n\nSend any movie name 😊"
     )
 
-# MOVIE FETCH
+# FETCH MOVIE
 def get_movie(movie_name):
     movie_name = movie_name.lower()
 
@@ -32,6 +50,16 @@ def get_movie(movie_name):
     except Exception as e:
         print("Error:", e)
         return None
+
+# WHERE TO WATCH (LEGAL LINKS)
+def get_watch_links(title):
+    query = title.replace(" ", "+")
+
+    return [
+        [InlineKeyboardButton("🔍 Search on Netflix", url=f"https://www.netflix.com/search?q={query}")],
+        [InlineKeyboardButton("🔍 Search on Prime Video", url=f"https://www.primevideo.com/search/ref=atv_nb_sr?phrase={query}")],
+        [InlineKeyboardButton("🔍 Search on Hotstar", url=f"https://www.hotstar.com/in/search?q={query}")]
+    ]
 
 # SEND MOVIE
 async def send_movie(update: Update, movie_name):
@@ -58,11 +86,17 @@ async def send_movie(update: Update, movie_name):
 📅 Year: {year}
 🎭 Genre: {genre}
 
-📝 {plot}"""
+📝 {plot}
 
-        # 🎬 Trailer button
+📺 Available on: Search below 👇"""
+
         trailer_url = f"https://www.youtube.com/results?search_query={title}+trailer"
-        keyboard = [[InlineKeyboardButton("▶️ Watch Trailer", url=trailer_url)]]
+
+        keyboard = [
+            [InlineKeyboardButton("▶️ Watch Trailer", url=trailer_url)],
+            *get_watch_links(title)
+        ]
+
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         try:
@@ -106,6 +140,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # APP
 app = ApplicationBuilder().token(TOKEN).build()
 
+𝓈𝒶𝓎𝒶𝓃𝑔 𝓜𝓪𝓷𝓪𝓰𝓮𝓻, [4/2/2026 2:56 PM]
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("movie", movie))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
