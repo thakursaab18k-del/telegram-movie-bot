@@ -1,23 +1,21 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import requests
+import os
 
-# 🔑 YOUR TOKENS (already added)
-TOKEN = "8145649130:AAHbbhcOkkJ2C3C-eYT4H7TJuZq3JiUHflg"
-API_KEY = "46111cc1"
+# 🔐 Use ENV (Render) OR fallback (local)
+TOKEN = os.getenv("TOKEN") or "8145649130:AAEDGyAcELtEd7So2fbkyC-wJyPIQev5gWE"
+API_KEY = os.getenv("API_KEY") or "46111cc1"
 
-# ⚡ Cache for fast response
 cache = {}
 
-# START COMMAND
+# START
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I am your movie bot 🤖🎬\nUse /movie <name>")
+    await update.message.reply_text(
+        "🎬 Welcome to Movie Bot 🤖\n\nSend any movie name 😊"
+    )
 
-# HELP COMMAND
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Use /movie <movie name>\nExample: /movie avatar")
-
-# GET MOVIE DATA
+# MOVIE FETCH
 def get_movie(movie_name):
     movie_name = movie_name.lower()
 
@@ -35,55 +33,83 @@ def get_movie(movie_name):
         print("Error:", e)
         return None
 
-# MOVIE COMMAND
-async def movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    movie_name = " ".join(context.args)
-
-    if not movie_name:
-        await update.message.reply_text("Please type movie name 😊")
-        return
-
-    # ⚡ typing animation
+# SEND MOVIE
+async def send_movie(update: Update, movie_name):
     await update.message.chat.send_action("typing")
 
-    # ⚡ quick feedback
-    await update.message.reply_text("Searching... 🎬")
+    msg = await update.message.reply_text("🔍 Searching...")
 
     data = get_movie(movie_name)
 
     if not data:
-        await update.message.reply_text("Server error 😕")
+        await msg.edit_text("⚠️ Server error, try again later")
         return
 
     if data.get("Response") == "True":
         title = data.get("Title", "N/A")
         rating = data.get("imdbRating", "N/A")
         year = data.get("Year", "N/A")
-        plot = data.get("Plot", "No description available")
+        genre = data.get("Genre", "N/A")
+        plot = data.get("Plot", "No description")
         poster = data.get("Poster")
 
         caption = f"""🎬 {title}
 ⭐ Rating: {rating}
 📅 Year: {year}
+🎭 Genre: {genre}
 
 📝 {plot}"""
 
-        # 🖼️ send poster
-        if poster and poster != "N/A":
-            await update.message.reply_photo(photo=poster, caption=caption)
-        else:
+        # 🎬 Trailer button
+        trailer_url = f"https://www.youtube.com/results?search_query={title}+trailer"
+        keyboard = [[InlineKeyboardButton("▶️ Watch Trailer", url=trailer_url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        try:
+            if poster and poster != "N/A":
+                await update.message.reply_photo(
+                    photo=poster,
+                    caption=caption,
+                    reply_markup=reply_markup
+                )
+            else:
+                await update.message.reply_text(
+                    caption,
+                    reply_markup=reply_markup
+                )
+        except Exception as e:
+            print("Send error:", e)
             await update.message.reply_text(caption)
 
     else:
-        await update.message.reply_text("Movie not found ❌")
+        await msg.edit_text("❌ Movie not found")
 
-# MAIN APP
+# /movie command
+async def movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    movie_name = " ".join(context.args)
+
+    if not movie_name:
+        await update.message.reply_text("Type movie name 😊")
+        return
+
+    await send_movie(update, movie_name)
+
+# DIRECT TEXT
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    movie_name = update.message.text.strip()
+
+    if len(movie_name) < 2:
+        return
+
+    await send_movie(update, movie_name)
+
+# APP
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CommandHandler("movie", movie))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-print("Bot is running... 🚀")
+print("Bot running 🚀")
 
 app.run_polling()
