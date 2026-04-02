@@ -140,7 +140,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # APP
 app = ApplicationBuilder().token(TOKEN).build()
 
-𝓈𝒶𝓎𝒶𝓃𝑔 𝓜𝓪𝓷𝓪𝓰𝓮𝓻, [4/2/2026 2:56 PM]
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("movie", movie))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
