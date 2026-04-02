@@ -5,13 +5,6 @@ import os
 import threading
 from flask import Flask
 
-# 🔐 ENV ONLY (no fallback token)
-TOKEN = os.getenv("from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import requests
-import os
-import threading
-from flask import Flask
 
 # 🔐 ENV ONLY (no fallback token)
 TOKEN = os.getenv("TOKEN")
@@ -20,7 +13,7 @@ API_KEY = os.getenv("API_KEY") or "46111cc1"
 cache = {}
 
 # ================== 🌐 DUMMY WEB SERVER ==================
-web_app = Flask(name)
+web_app = Flask(__name__)
 
 @web_app.route("/")
 def home():
